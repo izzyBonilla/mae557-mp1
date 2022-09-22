@@ -15,7 +15,7 @@ function main()
     x = [Δx*i for i=1:nwg]
     init(u,nwg,Δx)
     expl(u,nx,nsteps,Δx,Δ⏳)
-    #implicit(u,nwg,nsteps,Δx,Δ⏳)
+    #implicit(u,nx,nsteps,Δx,Δ⏳)
 
     return x,u
 
@@ -50,6 +50,17 @@ function expl(u::Array{Float64},nx::Int16,nt::Int16,Δx::Float64,Δ⏳::Float64)
 end
 
 function implicit(u::Array{Float64},nx::Int16,nt::Int16,Δx::Float64,Δ⏳::Float64)
+    # general flow: make first guess using forward euler, then do Newton iterations
+
+    uk = Array{Float64}(undef, nx+2)
+    a = Array{Float64}(undef, nx+2)
+
+
+    for t = 1:nt
+        uk = copy(u)
+        uk[1] = u[nx-1]
+    end
+
 
     return 0
 end
