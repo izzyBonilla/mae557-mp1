@@ -8,6 +8,7 @@ typedef std::vector<double> Vec;
 
 struct pdeParams {
     int nx;
+    int nwg;
     int nsteps;
     double v;
     double dx;
