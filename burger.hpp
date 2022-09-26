@@ -23,4 +23,8 @@ int jacobian(double* jac, const double* u, struct pdeParams params);
 
 int expl(double* u, struct pdeParams params);
 
+int solveCyclic(double* tc, double* u0, double* a, struct pdeParams params);
+
+int condense(double* a, double* ac, struct pdeParams params);
+
 #endif // BURGER_HPP_

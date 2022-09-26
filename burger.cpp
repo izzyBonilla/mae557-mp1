@@ -92,7 +92,7 @@ int implicit(double* u, struct pdeParams params) {
     double f;
 
     // number of newton iterations per step
-    int iter = 100;
+    int iter = 10;
 
     // gameplan: do an fe step as a first guess, then do newton iterations to find next timestep
     for(int i = 0; i < nsteps; ++i) {
@@ -112,16 +112,21 @@ int implicit(double* u, struct pdeParams params) {
         jacobian(jac.data(),u0.data(),params);
         
         // Newton iteration
-        for(int k = 1; k < iter; ++k) {
-            // gameplan: evaluate a
-            // invert jac
-            //
+        for(int k = 0; k < iter; ++k) {
+
+            // evaluate a
             for(int j = 1; j < nwg-1; ++j) {
+                a[j] = u0[j] + dt*(u0[j]/(2*dx)*(u0[j+1]-u0[j-1])-v/(dx*dx)*(u0[j+1]-2*u0[j]+u0[j-1]))-u[j]; 
+            }
+
+            // invert jacobian
+            solveCyclic(jac.data(), u0.data(),a.data(),params);
+
+            for(int j = 0; j < nwg; ++j) {
+                u0[j] = u[j] - u0[j];
             }
         }
-
-    }
-    
+    }    
 
     return 0;
 }
@@ -137,12 +142,17 @@ int jacobian(double* jac, const double* u, struct pdeParams params) {
     double dt = params.dt;
     double v = params.v;
 
-    // periodicity automatically enforced with ghost points
     for(int i = 1; i < nwg-1; ++i) {
         jac[nwg*i+i] = 1 + dt*(1/(2*dx)*(u[i+1]-u[i-1])+2*v/(dx*dx));   // main diagonal
         jac[nwg*i+i-1] = dt*(1/(2*dx)*(-u[i])-v/(dx*dx));              // sub diagonal
         jac[nwg*i+i+1] = dt*(1/(2*dx)*(u[i])-v/(dx*dx));              // super diagonal
     }
+
+    // hard coding periodicity like a chump, exclude ghost points
+    // 1st row 1st column element move to 1st row nth column
+    jac[nwg+nx] = jac[nwg];
+    // nth row nth column element move to nth row 1st column
+    jac[nwg*(nwg-2)+1] = jac[nwg*(nwg-1)-1]; 
 
     return 0;
 }
@@ -175,5 +185,30 @@ int expl(double* u, struct pdeParams params) {
             u[j] += dt*f;
         }
     }
+    return 0;
+}
+
+int solveCyclic(double* tc, double* u0, double* a, struct pdeParams params) {
+    // solves tridiagonal linear system governed as tc*u0 = a
+
+    // unpack useful dimensions from params
+    int nx = params.nx;
+    int nwg = params.nwg;
+
+    int nc = nx-1; // dimension of condensed matrix
+
+    return 0;
+}
+int condense(double* a, double* ac, struct pdeParams params) {
+    // given cyclic tridiagonal matrix a whose dimensions are defined in params,
+    // condense a to ac by ignoring first and last row and columns
+
+    // a is nwg*nwg, thus the first and last row and columns are ghost points
+    int nwg = params.nwg;
+
+    for(int i = 2; i < nwg-2; ++i) {
+        ac[i-2] = a[i];
+    }
+
     return 0;
 }
