@@ -34,12 +34,11 @@ int main(int argc, char *argv[]) {
     params.dx = L/params.nx;
     params.dt = tf/params.nsteps;
 
-
     Vec u(params.nwg);
 
     // apply initial conditions
     init(u.data(),params);
-
+    
     if(scheme == EXPLICIT) {
         // explicit, upwind scheme
         expl(u.data(),params);
@@ -57,7 +56,7 @@ int main(int argc, char *argv[]) {
         std::cout << "Can't write to file u.dat \n";
         exit(1);
     }
-
+    
     return 0;
 }
 
@@ -185,6 +184,7 @@ int newtonMethod(double* jac, double* u, double* u0, struct pdeParams params) {
     int nx = params.nx;
     double dx = params.dx;
     double dt = params.dt;
+    double v = params.v;
 
     int iter = 10;
 
@@ -219,17 +219,25 @@ int solveCyclic(double* tc, double* u0, double* a, struct pdeParams params) {
 
     int nc = nx-1; // dimension of condensed matrix
 
+    Vec tc_cond(nc*nc);
+
+    condense(tc,tc_cond.data(),params);
+
     return 0;
 }
 int condense(double* a, double* ac, struct pdeParams params) {
     // given cyclic tridiagonal matrix a whose dimensions are defined in params,
-    // condense a to ac by ignoring first and last row and columns
+    // condense a to ac by removing last row and last column
 
     // a is nwg*nwg, thus the first and last row and columns are ghost points
+    int nx = params.nx;
     int nwg = params.nwg;
+    int nc = params.nx-1;
 
-    for(int i = 2; i < nwg-2; ++i) {
-        ac[i-2] = a[i];
+    for(int i = 0; i < nc; ++i) {
+        for(int j = 0; j < nc; ++j) {
+            ac[i*nc+j] = a[nwg*(i+1)+j+1];
+        }
     }
 
     return 0;
