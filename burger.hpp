@@ -1,6 +1,6 @@
 // burger.h
-#ifndef BURGER_H_
-#define BURGER_H_
+#ifndef BURGER_HPP_
+#define BURGER_HPP_
 
 #include <vector>
 
@@ -23,4 +23,4 @@ int jacobian(double* jac, const double* u, struct pdeParams params);
 
 int expl(double* u, struct pdeParams params);
 
-#endif // BURGER_H_
+#endif // BURGER_HPP_

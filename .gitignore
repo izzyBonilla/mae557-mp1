@@ -34,3 +34,6 @@ test
 
 # Data Files
 *.dat
+
+# Idiot Proofing
+*.txt
