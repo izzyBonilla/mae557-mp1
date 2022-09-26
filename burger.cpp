@@ -74,6 +74,37 @@ int init(double* u, struct pdeParams params) {
     return 0;
 }
 
+int expl(double* u, struct pdeParams params) {
+    // implementation of explicit scheme using 
+    // 2-point upwinded differencing and forward euler
+
+    double v = params.v;
+    double dx = params.dx;
+    double dt = params.dt;
+
+    int i;
+    int j;
+
+    double f;
+    int coeff;
+
+    // main loop
+    // could parallelize this easily but it's not worth it
+    for(i = 0; i < params.nsteps; ++i){
+        // perodic boundary conditions with ghost points
+        u[0] = u[params.nwg-4];
+        u[1] = u[params.nwg-3];
+        u[params.nwg-2] = u[2];
+        u[params.nwg-1] = u[3];
+        for (j = 1; j < params.nwg-2; ++j) {
+            coeff = (u[j]>0); // if u[j] > 0, then use backward difference else forward difference
+            f = v/(dx*dx)*(u[j+1]-2*u[j]+u[j-1])-u[j]/dx*(u[j-coeff+1]-u[j-coeff]);
+            u[j] += dt*f;
+        }
+    }
+    return 0;
+}
+
 int implicit(double* u, struct pdeParams params) {
 
     // unpack struct for convenient naming
@@ -110,22 +141,9 @@ int implicit(double* u, struct pdeParams params) {
 
         // calculate jacobian based on guess u0
         jacobian(jac.data(),u0.data(),params);
-        
-        // Newton iteration
-        for(int k = 0; k < iter; ++k) {
 
-            // evaluate a
-            for(int j = 1; j < nwg-1; ++j) {
-                a[j] = u0[j] + dt*(u0[j]/(2*dx)*(u0[j+1]-u0[j-1])-v/(dx*dx)*(u0[j+1]-2*u0[j]+u0[j-1]))-u[j]; 
-            }
-
-            // invert jacobian
-            solveCyclic(jac.data(), u0.data(),a.data(),params);
-
-            for(int j = 0; j < nwg; ++j) {
-                u0[j] = u[j] - u0[j];
-            }
-        }
+        // newton iterations
+        newtonMethod(jac.data(), u, u0.data(), params);
     }    
 
     return 0;
@@ -157,34 +175,38 @@ int jacobian(double* jac, const double* u, struct pdeParams params) {
     return 0;
 }
 
-int expl(double* u, struct pdeParams params) {
-    // implementation of explicit scheme using 
-    // 2-point upwinded differencing and forward euler
+int newtonMethod(double* jac, double* u, double* u0, struct pdeParams params) {
 
-    double v = params.v;
+    // given a jacobian jac, state vector u, and initial guess u0,
+    // iterate a pre-specified number of times to solve for u_n+1
+
+    // unpack params
+    int nwg = params.nwg;
+    int nx = params.nx;
     double dx = params.dx;
     double dt = params.dt;
 
-    int i;
-    int j;
+    int iter = 10;
 
-    double f;
-    int coeff;
+    Vec a(nwg);
 
     // main loop
-    // could parallelize this easily but it's not worth it
-    for(i = 0; i < params.nsteps; ++i){
-        // perodic boundary conditions with ghost points
-        u[0] = u[params.nwg-4];
-        u[1] = u[params.nwg-3];
-        u[params.nwg-2] = u[2];
-        u[params.nwg-1] = u[3];
-        for (j = 1; j < params.nwg-2; ++j) {
-            coeff = (u[j]>0); // if u[j] > 0, then use backward difference else forward difference
-            f = v/(dx*dx)*(u[j+1]-2*u[j]+u[j-1])-u[j]/dx*(u[j-coeff+1]-u[j-coeff]);
-            u[j] += dt*f;
+    for(int k = 0; k < iter; ++k) {
+        // evaluate nonlinear function a, negate here for ease
+        // please note if you ever reuse this, you will probably have to rewrite what a is
+        for(int i = 1; i < nwg-1; ++i) {
+            a[i] = -(u0[i]+dt*(u[i]/(2*dx)*(u[i+1]-u[i-1])-v/(dx*dx)*(u[i+1]-2*u[i]+u[i-1]))-u[i]);
+        }
+
+        // solve cyclic will modify u0 in place
+        solveCyclic(jac, u0, a.data(),params);
+        for(int i = 0; i < nwg; ++i) {
+            u0[i] = u0[i] + u[i];
         }
     }
+
+    u = u0;
+
     return 0;
 }
 
