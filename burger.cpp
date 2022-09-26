@@ -2,7 +2,7 @@
 #include <cmath>
 #include <fstream>
 #include <omp.h>
-#include "burger.h"
+#include "burger.hpp"
 
 #define EXPLICIT 1
 #define IMPLICIT 2
@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
 
 
     Vec u(params.nwg);
-    
+
     // apply initial conditions
     init(u.data(),params);
 
@@ -75,9 +75,53 @@ int init(double* u, struct pdeParams params) {
 }
 
 int implicit(double* u, struct pdeParams params) {
+
+    // unpack struct for convenient naming
+    int nwg = params.nwg;
+    int nx = params.nx;
+    int nsteps = params.nsteps;
+    double v = params.v;
+    double dx = params.dx;
+    double dt = params.dt;
     
-    Vec jac(params.nwg*params.nwg);
-    Vec a(params.nwg);  
+    Vec jac(nwg*nwg);
+    Vec u0(nwg);
+    Vec a(nwg);
+
+    // rhs value placeholder
+    double f;
+
+    // number of newton iterations per step
+    int iter = 100;
+
+    // gameplan: do an fe step as a first guess, then do newton iterations to find next timestep
+    for(int i = 0; i < nsteps; ++i) {
+        // Periodic Boundary Conditions
+        u[0] = u[nwg-4];
+        u[1] = u[nwg-3];
+        u[nwg-2] = u[2];
+        u[nwg-1] = u[3];
+
+        // FE Step
+        for(int j = 1; j < nwg-1; ++j) {
+            f = v/(dx*dx)*(u[j+1]-2*u[j]+u[j-1])-u[j]/(2*dx)*(u[j+1]-u[j-1]);
+            u0[j] = u[j] + dt*f;
+        }
+
+        // calculate jacobian based on guess u0
+        jacobian(jac.data(),u0.data(),params);
+        
+        // Newton iteration
+        for(int k = 1; k < iter; ++k) {
+            // gameplan: evaluate a
+            // invert jac
+            //
+            for(int j = 1; j < nwg-1; ++j) {
+            }
+        }
+
+    }
+    
 
     return 0;
 }
