@@ -108,7 +108,6 @@ int implicit(double* u, struct pdeParams params) {
 
     // unpack struct for convenient naming
     int nwg = params.nwg;
-    int nx = params.nx;
     int nsteps = params.nsteps;
     double v = params.v;
     double dx = params.dx;
@@ -116,13 +115,9 @@ int implicit(double* u, struct pdeParams params) {
     
     Vec jac(nwg*nwg);
     Vec u0(nwg);
-    Vec a(nwg);
 
     // rhs value placeholder
     double f;
-
-    // number of newton iterations per step
-    int iter = 10;
 
     // gameplan: do an fe step as a first guess, then do newton iterations to find next timestep
     for(int i = 0; i < nsteps; ++i) {
@@ -200,6 +195,8 @@ int newtonMethod(double* jac, double* u, double* u0, struct pdeParams params) {
 
         // solve cyclic will modify u0 in place
         solveCyclic(jac, u0, a.data(),params);
+
+        // now have u0 = -Ja(u) = u_n+1 - u_n
         for(int i = 0; i < nwg; ++i) {
             u0[i] = u0[i] + u[i];
         }
@@ -213,6 +210,14 @@ int newtonMethod(double* jac, double* u, double* u0, struct pdeParams params) {
 int solveCyclic(double* tc, double* u0, double* a, struct pdeParams params) {
     // solves tridiagonal linear system governed as tc*u0 = a
 
+    // inputs:
+    // tc: size nwg*nwg double, jacobian
+    // a: size nwg double, nonlinear input
+    // params: struct with PDE parameters
+
+    // outputs:
+    // u0: size nwg double, represents next guess for newton iteration
+
     // unpack useful dimensions from params
     int nx = params.nx;
     int nwg = params.nwg;
@@ -222,6 +227,48 @@ int solveCyclic(double* tc, double* u0, double* a, struct pdeParams params) {
     Vec tc_cond(nc*nc);
 
     condense(tc,tc_cond.data(),params);
+
+    // LU Factorization
+    Vec l(nc-1);
+    Vec s(nc-1);
+    Vec d(nc);
+
+    d[0] = tc_cond[0];
+    s[0] = tc_cond[1];
+
+    for(int i = 0; i < nc-2; ++i) {
+        l[i] = tc_cond[(i+1)*nc+i] / d[i];
+        d[i+1] = tc_cond[(i+1)*nc+i+1] - l[i]*s[i];
+        s[i+1] = tc_cond[(i+1)*nc+i+2];
+    }
+
+    l[nc-2] = tc_cond[nc*nc-2]/d[nc-2];
+    d[nc-1] = tc_cond[nc*nc-1] - l[nc-2]*s[nc-2];
+
+    // Construct known vectors q1 and q2
+    Vec q1(nc); // q1 will represent knowns from 0 to nx-1
+    Vec q2(nc); // q2 will capture the condensed information
+
+        // direct copy of a vector
+    for(int i = 0; i < nc; ++i) {
+        q1[i] = a[i+1]; // skip ghost point in a
+    }
+
+    q2[0] = tc[nwg+nx];
+    q2[nc-1] = tc[(nwg-3)*nwg+nx]; // access nth element of n-1th row with 2 ghost points
+
+    // Partial Solutions y1 and y2 for forward substitution step
+    Vec y1(nc);
+    Vec y2(nc);
+
+    // Full Solutions x1 and x2
+    Vec x1(nc);
+    Vec x2(nc);
+
+    // Forward Substitution
+    for(int i = 1; i < nc; ++i) {
+
+    }
 
     return 0;
 }

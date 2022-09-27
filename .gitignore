@@ -37,3 +37,4 @@ test
 
 # Idiot Proofing
 *.txt
+./idea
