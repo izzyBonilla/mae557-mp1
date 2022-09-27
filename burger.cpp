@@ -226,7 +226,10 @@ int solveCyclic(double* tc, double* u0, double* a, struct pdeParams params) {
 
     Vec tc_cond(nc*nc);
 
+
+
     condense(tc,tc_cond.data(),params);
+
 
     // LU Factorization
     Vec l(nc-1);
@@ -254,8 +257,8 @@ int solveCyclic(double* tc, double* u0, double* a, struct pdeParams params) {
         q1[i] = a[i+1]; // skip ghost point in a
     }
 
-    q2[0] = tc[nwg+nx];
-    q2[nc-1] = tc[(nwg-3)*nwg+nx]; // access nth element of n-1th row with 2 ghost points
+    q2[0] = -tc[nwg+nx];
+    q2[nc-1] = -tc[(nwg-3)*nwg+nx]; // access nth element of n-1th row with 2 ghost points
 
     // Partial Solutions y1 and y2 for forward substitution step
     Vec y1(nc);
@@ -266,8 +269,28 @@ int solveCyclic(double* tc, double* u0, double* a, struct pdeParams params) {
     Vec x2(nc);
 
     // Forward Substitution
+    y1[0] = q1[0];
+    y2[0] = q2[0];
     for(int i = 1; i < nc; ++i) {
+        y1[i] = q1[i] - l[i-1]*y1[i-1];
+        y2[i] = q2[i] - l[i-1]*y2[i-1];
+    }
 
+    // Backward Substitution
+
+    x1[nc-1] = y2[nc-1]/d[nc-1];
+    x2[nc-1] = y2[nc-1]/d[nc-1];
+
+    for(int i = nc-2; i >= 0; --i) {
+        x1[i] = (y1[i]-s[i]*y1[i+1])/d[i];
+        x2[i] = (y2[i]-s[i]*y2[i+1])/d[i];
+    }
+    // calculate u at the last point
+    u0[nwg-1] = (a[nwg-1]-tc[(nwg-2)*nwg+1]*x1[0]-tc[(nwg-1)*nwg-3]*x1[nc-1])/
+                (tc[(nwg-1)*nwg-2]+tc[(nwg-2)*nwg+1]*x2[0]+tc[(nwg-1)*nwg-3]*x2[nc-1]);
+
+    for(int i = 1; i < nc; ++i) {
+        u0[i] = x1[i-1] + x2[i-1]*u0[nwg-1];
     }
 
     return 0;
