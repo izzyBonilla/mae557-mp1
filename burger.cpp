@@ -138,6 +138,11 @@ int implicit(double* u, struct pdeParams params) {
 
         // newton iterations
         newtonMethod(jac.data(), u, u0.data(), params);
+        
+        // now assign u to guess u0
+        for(int i = 0; i < nwg; ++i) {
+            u[i] = u0[i];
+        }
     }    
 
     return 0;
@@ -181,7 +186,7 @@ int newtonMethod(double* jac, double* u, double* u0, struct pdeParams params) {
     double dt = params.dt;
     double v = params.v;
 
-    int iter = 10;
+    int iter = 1;
 
     Vec a(nwg);
 
@@ -190,7 +195,7 @@ int newtonMethod(double* jac, double* u, double* u0, struct pdeParams params) {
         // evaluate nonlinear function a, negate here for ease
         // please note if you ever reuse this, you will probably have to rewrite what a is
         for(int i = 1; i < nwg-1; ++i) {
-            a[i] = -(u0[i]+dt*(u[i]/(2*dx)*(u[i+1]-u[i-1])-v/(dx*dx)*(u[i+1]-2*u[i]+u[i-1]))-u[i]);
+            a[i] = -(u0[i]+dt*(u0[i]/(2*dx)*(u0[i+1]-u0[i-1])-v/(dx*dx)*(u0[i+1]-2*u0[i]+u0[i-1]))-u0[i]);
         }
 
         // solve cyclic will modify u0 in place
@@ -201,8 +206,6 @@ int newtonMethod(double* jac, double* u, double* u0, struct pdeParams params) {
             u0[i] = u0[i] + u[i];
         }
     }
-
-    u = u0;
 
     return 0;
 }
