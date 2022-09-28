@@ -260,8 +260,8 @@ int solveCyclic(double* tc, double* u0, double* a, struct pdeParams params) {
         q1[i] = a[i+1]; // skip ghost point in a
     }
 
-    q2[0] = -tc[nwg+nx];
-    q2[nc-1] = -tc[(nwg-3)*nwg+nx]; // access nth element of n-1th row with 2 ghost points
+    q2[0] = tc[nwg+nx];
+    q2[nc-1] = tc[(nwg-3)*nwg+nx]; // access nth element of n-1th row with 2 ghost points
 
     // Partial Solutions y1 and y2 for forward substitution step
     Vec y1(nc);
@@ -293,7 +293,7 @@ int solveCyclic(double* tc, double* u0, double* a, struct pdeParams params) {
                 (tc[(nwg-1)*nwg-2]+tc[(nwg-2)*nwg+1]*x2[0]+tc[(nwg-1)*nwg-3]*x2[nc-1]);
 
     for(int i = 1; i < nc; ++i) {
-        u0[i] = x1[i-1] + x2[i-1]*u0[nwg-1];
+        u0[i] = x1[i-1] - x2[i-1]*u0[nwg-1];
     }
 
     return 0;
