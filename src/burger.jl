@@ -1,68 +1,66 @@
 using LinearAlgebra
 
 function main()
+
+    # Set PDE boundaries
     L::Float64 = 2π
-    ⏳::Float64 = 5
+    Tf::Float64 = 5
 
-    nx::Int16 = 100
-    nwg::Int16 = nx + 2 # 2 ghost points
-    nsteps::Int16 = 5000
-
+    # PDE parameters
+    nx::Int64 = 10
+    nt::Int64 = 5000
     Δx::Float64 = L/nx
-    Δ⏳::Float64 = ⏳/nsteps
-
-    u = Array{Float64}(undef, nwg)
-    x = [Δx*i for i=1:nwg]
-    init(u,nwg,Δx)
-    expl(u,nx,nsteps,Δx,Δ⏳)
-    #implicit(u,nx,nsteps,Δx,Δ⏳)
-
-    return x,u
-
-end
-
-function init(u::Array{Float64},nx::Int16,Δx::Float64)
-    for i = 1:nx
-        x = Δx*i
-        u[i] = sin(x)*exp(-(x-π)^2)
-    end
-
-    return 0
-end
-
-function expl(u::Array{Float64},nx::Int16,nt::Int16,Δx::Float64,Δ⏳::Float64)
+    Δt::Float64 = Tf/nt
     v::Float64 = 0.01
-    f::Float64 = 0
-    coeff::Int8 = 0
 
-    for i = 1:nt
-        u[1] = u[nx-1]
-        u[2] = u[nx]
-        u[nx+1] = u[3]
-        u[nx+2] = u[4]
-        for j = 2:nx+1
-            coeff = Int(u[j]>0)
-            f = v*(Δx^2)*(u[j+1]-2*u[j]+u[j-1])-u[j]/Δx*(u[j-coeff+1]-u[j-coeff])
-            u[j] += Δ⏳*f
-        end
-    end
-    return 0
+    x = [Δx*i for i = 1:nx]
+
+    u = [sin(x[i])*exp(-(x[i]-π)^2) for i = 1:nx]
+
+    # explicit(u,nx,nt,Δx,Δt,v)
+
+    T1, T2 = upwind(u,nx,Δx,Δt,v)
+
+    return x,u,T1
+
 end
 
-function implicit(u::Array{Float64},nx::Int16,nt::Int16,Δx::Float64,Δ⏳::Float64)
-    # general flow: make first guess using forward euler, then do Newton iterations
+function explicit(u::Array{Float64}, nx::Int64, nt::Int64, Δx::Float64,Δt::Float64, v::Float64)
 
-    uk = Array{Float64}(undef, nx+2)
-    a = Array{Float64}(undef, nx+2)
-
-
-    for t = 1:nt
-        uk = copy(u)
-        uk[1] = u[nx-1]
+    # Main loop
+    for i=1:nt
+        op = upwind(u,nx,Δx,Δt,v)
+        u = op*u
     end
 
-
     return 0
+
+end
+
+function upwind(u::Array{Float64}, nx::Int64, Δx::Float64, Δt::Float64, v::Float64)
+
+    # 1st Order Finite Difference
+    # Main diagonal of the operator matrix
+    d1 = [if u[i] < 0 1 else (-1) end for i = 1:nx]
+    l1 = [if u[i] < 0 (-1) else 0 end for i = 1:nx-1]
+    u1 = [if u[i] < 0 0 else 1 end for i = 1:nx-1]
+
+    # Periodic Boundary Conditions
+    T1 = [0 for i = 1:nx, j = 1:nx] + Tridiagonal(l1,d1,u1)
+    T1[1,nx] = u[1] < 0 ? (-1) : 0
+    T1[nx,1] = u[nx] < 0 ? 0 : 1
+
+    #T1 = (Diagonal(u)*T1)
+
+    # 2nd Order Finite Difference
+    d2 = [-2 for i = 1:nx]
+    ul2 = [1 for i = 1:nx-1]
+    T2 = Array{Float64}(undef,nx,nx) + Tridiagonal(ul2,d2,ul2)
+    T2[1,nx] = 1
+    T2[nx,1] = 1
+
+    return T1, T2
+
 end
 
 main()

@@ -38,14 +38,15 @@ int main(int argc, char *argv[]) {
 
     // apply initial conditions
     init(u.data(),params);
-    
+    /*
     if(scheme == EXPLICIT) {
         // explicit, upwind scheme
         expl(u.data(),params);
     } else if(scheme == IMPLICIT) {
         implicit(u.data(),params);
     }
-
+    */
+    /*
     // write to file
     std::ofstream arr_file("u.dat");
     if(arr_file.is_open()) {
@@ -56,7 +57,52 @@ int main(int argc, char *argv[]) {
         std::cout << "Can't write to file u.dat \n";
         exit(1);
     }
-    
+    */ 
+
+    Vec test(params.nwg*params.nwg);
+    std::cout << params.nwg << "\n";
+
+    for(int i = 1; i < params.nwg-1; ++i) {
+        test[i*params.nwg + i] = 1;
+        test[i*params.nwg + i - 1] = 2;
+        test[i*params.nwg + i + 1] = 2;
+    }
+
+    test[params.nwg*2-2] = test[params.nwg];
+    test[params.nwg] = 0;
+    test[params.nwg*(params.nwg-2)+1] = test[params.nwg*(params.nwg-1)-1];
+    test[params.nwg*(params.nwg-1)-1] = 0;
+
+    for(int i = 0; i < params.nwg; ++i) {
+        for(int j = 0; j < params.nwg; ++j) {
+            std::cout << test[i*params.nwg+j] << "\t";
+        }
+        std::cout << "\n";
+    }
+
+    std::cout << "\n";
+
+    Vec x(params.nwg);
+    Vec b(params.nwg);
+
+    for(int i = 1; i < params.nwg-1; ++i) {
+        b[i] = i;
+    }
+
+    for(int i = 0; i < params.nwg; ++i) {
+        std::cout << b[i] << "\n";
+    }
+
+    std::cout << "\n";
+
+    solveCyclic(test.data(),x.data(),b.data(),params);
+
+    std::cout << "\n";
+
+    for(int i = 0; i < params.nwg; ++i) {
+        std::cout << x[i] << "\n";
+    }
+
     return 0;
 }
 
@@ -232,10 +278,7 @@ int solveCyclic(double* tc, double* u0, double* a, struct pdeParams params) {
 
     Vec tc_cond(nc*nc);
 
-
-
     condense(tc,tc_cond.data(),params);
-
 
     // LU Factorization
     Vec l(nc-1);
@@ -277,6 +320,7 @@ int solveCyclic(double* tc, double* u0, double* a, struct pdeParams params) {
     // Forward Substitution
     y1[0] = q1[0];
     y2[0] = q2[0];
+
     for(int i = 1; i < nc; ++i) {
         y1[i] = q1[i] - l[i-1]*y1[i-1];
         y2[i] = q2[i] - l[i-1]*y2[i-1];
@@ -284,19 +328,20 @@ int solveCyclic(double* tc, double* u0, double* a, struct pdeParams params) {
 
     // Backward Substitution
 
-    x1[nc-1] = y2[nc-1]/d[nc-1];
+    x1[nc-1] = y1[nc-1]/d[nc-1];
     x2[nc-1] = y2[nc-1]/d[nc-1];
 
     for(int i = nc-2; i >= 0; --i) {
         x1[i] = (y1[i]-s[i]*y1[i+1])/d[i];
         x2[i] = (y2[i]-s[i]*y2[i+1])/d[i];
     }
+
     // calculate u at the last point
-    u0[nwg-1] = (a[nwg-1]-tc[(nwg-2)*nwg+1]*x1[0]-tc[(nwg-1)*nwg-3]*x1[nc-1])/
+    u0[nwg-2] = (a[nwg-2]-tc[(nwg-2)*nwg+1]*x1[0]-tc[(nwg-1)*nwg-3]*x1[nc-1])/
                 (tc[(nwg-1)*nwg-2]+tc[(nwg-2)*nwg+1]*x2[0]+tc[(nwg-1)*nwg-3]*x2[nc-1]);
 
-    for(int i = 1; i < nc; ++i) {
-        u0[i] = x1[i-1] - x2[i-1]*u0[nwg-1];
+    for(int i = 1; i < nc+1; ++i) {
+        u0[i] = x1[i-1] + x2[i-1]*u0[nwg-1];
     }
 
     return 0;
