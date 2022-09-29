@@ -133,9 +133,6 @@ int implicit(double* u, struct pdeParams params) {
             u0[j] = u[j] + dt*f;
         }
 
-        // calculate jacobian based on guess u0
-        jacobian(jac.data(),u0.data(),params);
-
         // newton iterations
         newtonMethod(jac.data(), u, u0.data(), params);
         
@@ -159,17 +156,19 @@ int jacobian(double* jac, const double* u, struct pdeParams params) {
     double dt = params.dt;
     double v = params.v;
 
-    for(int i = 1; i < nwg-1; ++i) {
-        jac[nwg*i+i] = 1 + dt*(1/(2*dx)*(u[i+1]-u[i-1])+2*v/(dx*dx));   // main diagonal
-        jac[nwg*i+i-1] = dt*(1/(2*dx)*(-u[i])-v/(dx*dx));              // sub diagonal
-        jac[nwg*i+i+1] = dt*(1/(2*dx)*(u[i])-v/(dx*dx));              // super diagonal
+    for(int i = 1; i < nwg - 1; ++i) {
+        jac[(i*nwg)+i] = 1 + dt*(1/(2*dx)*(u[i+1]-u[i-1])+2*v/(dx*dx));   // main diagonal
+        jac[(i*nwg)+i-1] = dt*(1/(2*dx)*u[i] - v/(dx*dx));               // sub diagonal
+        jac[(i*nwg)+i+1] = dt*(1/(2*dx)*(-u[i]) - v/(dx*dx));           // super diagonal
     }
 
     // hard coding periodicity like a chump, exclude ghost points
     // 1st row 1st column element move to 1st row nth column
     jac[nwg+nx] = jac[nwg];
+    jac[nwg] = 0;
     // nth row nth column element move to nth row 1st column
-    jac[nwg*(nwg-2)+1] = jac[nwg*(nwg-1)-1]; 
+    jac[nwg*(nwg-2)+1] = jac[nwg*(nwg-1)-1];
+    jac[nwg*(nwg-1)-1] = 0; 
 
     return 0;
 }
@@ -194,6 +193,10 @@ int newtonMethod(double* jac, double* u, double* u0, struct pdeParams params) {
     for(int k = 0; k < iter; ++k) {
         // evaluate nonlinear function a, negate here for ease
         // please note if you ever reuse this, you will probably have to rewrite what a is
+
+        // calculate jacobian based on guess u0
+        jacobian(jac,u0,params);
+
         for(int i = 1; i < nwg-1; ++i) {
             a[i] = -(u0[i]+dt*(u0[i]/(2*dx)*(u0[i+1]-u0[i-1])-v/(dx*dx)*(u0[i+1]-2*u0[i]+u0[i-1]))-u0[i]);
         }
