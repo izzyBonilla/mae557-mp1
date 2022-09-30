@@ -341,12 +341,8 @@ int solveCyclic(double* tc, double* u0, double* a, struct pdeParams params) {
     double denom = (tc[nwg*(nwg-1)-2]+tc[nwg*(nwg-2)+1]*x2[0]+tc[nwg*(nwg-1)-3]*x2[nc-1]);
     u0[nx] = num/denom;
 
-    for(int i = 0; i < nwg; ++i) {
-        std::cout << u0[i] << '\n';
-    }
-
-    for(int i = 1; i < nc+1; ++i) {
-        u0[i] = x1[i-1] + x2[i-1]*u0[nwg-1];
+    for(int i = 1; i < nx; ++i) {
+        u0[i] = x1[i-1] + x2[i-1]*u0[nx];
     }
 
     return 0;
