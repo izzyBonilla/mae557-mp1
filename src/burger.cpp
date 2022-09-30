@@ -337,8 +337,8 @@ int solveCyclic(double* tc, double* u0, double* a, struct pdeParams params) {
     }
 
     // calculate u at the last point
-    double num = (a[nx]-tc[nwg*nx+1]*x1[0] - tc[nwg*(nwg-1)-3]*x1[nc-1]);
-    double denom = (tc[nwg*(nwg-1)-2]+tc[nwg*nx+1]*x2[0]+tc[nwg*(nwg-1)-3]*x1[nc-1]);
+    double num = (a[nx]-tc[nwg*(nwg-2)+1]*x1[0]-tc[nwg*(nwg-1)-3]*x1[nc-1]);
+    double denom = (tc[nwg*(nwg-1)-2]+tc[nwg*(nwg-2)+1]*x2[0]+tc[nwg*(nwg-1)-3]*x2[nc-1]);
     u0[nx] = num/denom;
 
     for(int i = 0; i < nwg; ++i) {
