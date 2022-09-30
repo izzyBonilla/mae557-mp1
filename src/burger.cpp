@@ -18,22 +18,24 @@ int main(int argc, char *argv[]) {
 
     double tf;
 
-    if(argc==6) {
+    if(argc==6) { // unpacking command line arguments
         params.nx = atoi(argv[1]);
         params.nwg = params.nx + NGHOST;
         params.nsteps = atoi(argv[2]);
         tf = atof(argv[3]);
         params.v = atof(argv[4]);
         scheme = atoi(argv[5]);
-    } else {
+
+    } else { // error handling for wrong number of arguments
         std::cout << "Please supply 5 arguments specifying nx, nsteps, tf, v,";
         std::cout << "and which scheme: 1 for explicit, 2 for implicit \n";
         exit(1);
     }
-    
+
     params.dx = L/params.nx;
     params.dt = tf/params.nsteps;
 
+    // state vector
     Vec u(params.nwg);
 
     // apply initial conditions
@@ -43,6 +45,7 @@ int main(int argc, char *argv[]) {
         // explicit, upwind scheme
         expl(u.data(),params);
     } else if(scheme == IMPLICIT) {
+        // implicit, centered scheme
         implicit(u.data(),params);
     }
     
@@ -123,11 +126,6 @@ int implicit(double* u, struct pdeParams params) {
 
     // gameplan: do an fe step as a first guess, then do newton iterations to find next timestep
     for(int i = 0; i < nsteps; ++i) {
-        // Periodic Boundary Conditions
-        // u[0] = u[nwg-4];
-        // u[1] = u[nwg-3];
-        // u[nwg-2] = u[2];
-        // u[nwg-1] = u[3];
 
         // FE Step
         for(int j = 1; j < nwg-1; ++j) {
@@ -135,6 +133,11 @@ int implicit(double* u, struct pdeParams params) {
             u0[j] = u[j] + dt*f;
         }
 
+        // Periodic Boundary Conditions
+        u[0] = u[nwg-4];
+        u[1] = u[nwg-3];
+        u[nwg-2] = u[2];
+        u[nwg-1] = u[3];
         // newton iterations
         newtonMethod(jac.data(), u, u0.data(), params);
         
