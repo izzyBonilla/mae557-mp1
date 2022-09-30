@@ -306,8 +306,8 @@ int solveCyclic(double* tc, double* u0, double* a, struct pdeParams params) {
         q1[i] = a[i+1]; // skip ghost point in a
     }
 
-    q2[0] = tc[nwg+nx];
-    q2[nc-1] = tc[(nwg-3)*nwg+nx]; // access nth element of n-1th row with 2 ghost points
+    q2[0] = -tc[nwg+nx];
+    q2[nc-1] = -tc[(nwg-3)*nwg+nx]; // access nth element of n-1th row with 2 ghost points
 
     // Partial Solutions y1 and y2 for forward substitution step
     Vec y1(nc);
@@ -332,13 +332,18 @@ int solveCyclic(double* tc, double* u0, double* a, struct pdeParams params) {
     x2[nc-1] = y2[nc-1]/d[nc-1];
 
     for(int i = nc-2; i >= 0; --i) {
-        x1[i] = (y1[i]-s[i]*y1[i+1])/d[i];
-        x2[i] = (y2[i]-s[i]*y2[i+1])/d[i];
+        x1[i] = (y1[i] - s[i]*x1[i+1])/d[i];
+        x2[i] = (y2[i] - s[i]*x2[i+1])/d[i];
     }
 
     // calculate u at the last point
-    u0[nwg-2] = (a[nwg-2]-tc[(nwg-2)*nwg+1]*x1[0]-tc[(nwg-1)*nwg-3]*x1[nc-1])/
-                (tc[(nwg-1)*nwg-2]+tc[(nwg-2)*nwg+1]*x2[0]+tc[(nwg-1)*nwg-3]*x2[nc-1]);
+    double num = (a[nx]-tc[nwg*nx+1]*x1[0] - tc[nwg*(nwg-1)-3]*x1[nc-1]);
+    double denom = (tc[nwg*(nwg-1)-2]+tc[nwg*nx+1]*x2[0]+tc[nwg*(nwg-1)-3]*x1[nc-1]);
+    u0[nx] = num/denom;
+
+    for(int i = 0; i < nwg; ++i) {
+        std::cout << u0[i] << '\n';
+    }
 
     for(int i = 1; i < nc+1; ++i) {
         u0[i] = x1[i-1] + x2[i-1]*u0[nwg-1];
