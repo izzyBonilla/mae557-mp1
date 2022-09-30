@@ -7,6 +7,7 @@
 #define EXPLICIT 1
 #define IMPLICIT 2
 #define NGHOST 2
+#define L 2*M_PI
 
 int main(int argc, char *argv[]) {
 
@@ -15,22 +16,21 @@ int main(int argc, char *argv[]) {
 
     int scheme;
 
-    if(argc==5) {
+    double tf;
+
+    if(argc==6) {
         params.nx = atoi(argv[1]);
         params.nwg = params.nx + NGHOST;
         params.nsteps = atoi(argv[2]);
-        params.v = atof(argv[3]);
-        scheme = atoi(argv[4]);
+        tf = atof(argv[3]);
+        params.v = atof(argv[4]);
+        scheme = atoi(argv[5]);
     } else {
-        std::cout << "Please supply 4 arguments specifying nx, nsteps, v,";
+        std::cout << "Please supply 5 arguments specifying nx, nsteps, tf, v,";
         std::cout << "and which scheme: 1 for explicit, 2 for implicit \n";
         exit(1);
     }
-
-    // specify length of domain and the final time
-    double L = 2*M_PI;
-    double tf = 5;
-
+    
     params.dx = L/params.nx;
     params.dt = tf/params.nsteps;
 
@@ -38,15 +38,15 @@ int main(int argc, char *argv[]) {
 
     // apply initial conditions
     init(u.data(),params);
-    /*
+    
     if(scheme == EXPLICIT) {
         // explicit, upwind scheme
         expl(u.data(),params);
     } else if(scheme == IMPLICIT) {
         implicit(u.data(),params);
     }
-    */
-    /*
+    
+    
     // write to file
     std::ofstream arr_file("u.dat");
     if(arr_file.is_open()) {
@@ -57,53 +57,9 @@ int main(int argc, char *argv[]) {
         std::cout << "Can't write to file u.dat \n";
         exit(1);
     }
-    */ 
-
-    Vec test(params.nwg*params.nwg);
-    std::cout << params.nwg << "\n";
-
-    for(int i = 1; i < params.nwg-1; ++i) {
-        test[i*params.nwg + i] = 1;
-        test[i*params.nwg + i - 1] = 2;
-        test[i*params.nwg + i + 1] = 2;
-    }
-
-    test[params.nwg*2-2] = test[params.nwg];
-    test[params.nwg] = 0;
-    test[params.nwg*(params.nwg-2)+1] = test[params.nwg*(params.nwg-1)-1];
-    test[params.nwg*(params.nwg-1)-1] = 0;
-
-    for(int i = 0; i < params.nwg; ++i) {
-        for(int j = 0; j < params.nwg; ++j) {
-            std::cout << test[i*params.nwg+j] << "\t";
-        }
-        std::cout << "\n";
-    }
-
-    std::cout << "\n";
-
-    Vec x(params.nwg);
-    Vec b(params.nwg);
-
-    for(int i = 1; i < params.nwg-1; ++i) {
-        b[i] = i;
-    }
-
-    for(int i = 0; i < params.nwg; ++i) {
-        std::cout << b[i] << "\n";
-    }
-
-    std::cout << "\n";
-
-    solveCyclic(test.data(),x.data(),b.data(),params);
-
-    std::cout << "\n";
-
-    for(int i = 0; i < params.nwg; ++i) {
-        std::cout << x[i] << "\n";
-    }
 
     return 0;
+     
 }
 
 int init(double* u, struct pdeParams params) {
@@ -168,10 +124,10 @@ int implicit(double* u, struct pdeParams params) {
     // gameplan: do an fe step as a first guess, then do newton iterations to find next timestep
     for(int i = 0; i < nsteps; ++i) {
         // Periodic Boundary Conditions
-        u[0] = u[nwg-4];
-        u[1] = u[nwg-3];
-        u[nwg-2] = u[2];
-        u[nwg-1] = u[3];
+        // u[0] = u[nwg-4];
+        // u[1] = u[nwg-3];
+        // u[nwg-2] = u[2];
+        // u[nwg-1] = u[3];
 
         // FE Step
         for(int j = 1; j < nwg-1; ++j) {
@@ -194,7 +150,6 @@ int implicit(double* u, struct pdeParams params) {
 int jacobian(double* jac, const double* u, struct pdeParams params) {
     // given state vector u and PDE parameters params, determine
     // jacobian of nonlinear system
-
 
     int nx = params.nx;
     int nwg = params.nwg;
@@ -231,7 +186,7 @@ int newtonMethod(double* jac, double* u, double* u0, struct pdeParams params) {
     double dt = params.dt;
     double v = params.v;
 
-    int iter = 1;
+    int iter = 10;
 
     Vec a(nwg);
 
@@ -251,7 +206,7 @@ int newtonMethod(double* jac, double* u, double* u0, struct pdeParams params) {
         solveCyclic(jac, u0, a.data(),params);
 
         // now have u0 = -Ja(u) = u_n+1 - u_n
-        for(int i = 0; i < nwg; ++i) {
+        for(int i = 1; i < nwg-1; ++i) {
             u0[i] = u0[i] + u[i];
         }
     }
