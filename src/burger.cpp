@@ -127,6 +127,10 @@ int implicit(double* u, struct pdeParams params) {
     // gameplan: do an fe step as a first guess, then do newton iterations to find next timestep
     for(int i = 0; i < nsteps; ++i) {
 
+        u[0] = u[nwg-4];
+        u[1] = u[nwg-3];
+        u[nwg-2] = u[2];
+        u[nwg-1] = u[3];
         // FE Step
         for(int j = 1; j < nwg-1; ++j) {
             f = v/(dx*dx)*(u[j+1]-2*u[j]+u[j-1])-u[j]/(2*dx)*(u[j+1]-u[j-1]);
@@ -134,10 +138,6 @@ int implicit(double* u, struct pdeParams params) {
         }
 
         // Periodic Boundary Conditions
-        u[0] = u[nwg-4];
-        u[1] = u[nwg-3];
-        u[nwg-2] = u[2];
-        u[nwg-1] = u[3];
         // newton iterations
         newtonMethod(jac.data(), u0.data(), params);
         
@@ -194,17 +194,22 @@ int newtonMethod(double* jac, double* u0, struct pdeParams params) {
     Vec a(nwg);
     Vec u_prev(nwg);
 
+    // residual and epsilon
+    double residual = 0;
+    double eps = 0.00001;
+
     // main loop
-    for(int k = 0; k < iter; ++k) {
+    do {
         // evaluate nonlinear function a, negate here for ease
         // please note if you ever reuse this, you will probably have to rewrite what a is
 
-        // calculate jacobian based on guess u0
-        jacobian(jac,u0,params);
-
+        // copy over previous iteration
         for(int i = 0; i < nwg; ++i) {
             u_prev[i] = u0[i];
         }
+
+        // calculate jacobian based on guess u0
+        jacobian(jac,u0,params);
 
         for(int i = 1; i < nwg-1; ++i) {
             a[i] = (u0[i]+dt*(u0[i]/(2*dx)*(u0[i+1]-u0[i-1])-v/(dx*dx)*(u0[i+1]-2*u0[i]+u0[i-1]))-u0[i]);
@@ -214,10 +219,13 @@ int newtonMethod(double* jac, double* u0, struct pdeParams params) {
         solveCyclic(jac, u0, a.data(),params);
 
         // now have -u0 = -Ja(u) = u_n+1 - u_n
+        residual = 0;
         for(int i = 1; i < nwg-1; ++i) {
             u0[i] = -u0[i] + u_prev[i];
+            residual += pow(u0[i]-u_prev[i],2); // L2 norm
         }
-    }
+
+    } while(residual > eps);
 
     return 0;
 }

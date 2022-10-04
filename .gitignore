@@ -38,3 +38,6 @@ test
 # Idiot Proofing
 *.txt
 ./idea
+
+# Submissions
+submit/*
