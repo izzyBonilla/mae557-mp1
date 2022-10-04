@@ -139,7 +139,7 @@ int implicit(double* u, struct pdeParams params) {
 
         // Periodic Boundary Conditions
         // newton iterations
-        newtonMethod(jac.data(), u0.data(), params);
+        newtonMethod(jac.data(), u,u0.data(), params);
         
         // now assign u to guess u0
         for(int i = 0; i < nwg; ++i) {
@@ -177,7 +177,7 @@ int jacobian(double* jac, const double* u, struct pdeParams params) {
     return 0;
 }
 
-int newtonMethod(double* jac, double* u0, struct pdeParams params) {
+int newtonMethod(double* jac, double* u, double* u0, struct pdeParams params) {
 
     // given a jacobian jac, state vector u, and initial guess u0,
     // iterate a pre-specified number of times to solve for u_n+1
@@ -212,7 +212,7 @@ int newtonMethod(double* jac, double* u0, struct pdeParams params) {
         jacobian(jac,u0,params);
 
         for(int i = 1; i < nwg-1; ++i) {
-            a[i] = (u0[i]+dt*(u0[i]/(2*dx)*(u0[i+1]-u0[i-1])-v/(dx*dx)*(u0[i+1]-2*u0[i]+u0[i-1]))-u0[i]);
+            a[i] = (u0[i]+dt*(u0[i]/(2*dx)*(u0[i+1]-u0[i-1])-v/(dx*dx)*(u0[i+1]-2*u0[i]+u0[i-1]))-u[i]);
         }
 
         // solve cyclic will modify u0 in place
