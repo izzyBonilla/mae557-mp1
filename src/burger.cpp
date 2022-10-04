@@ -139,7 +139,7 @@ int implicit(double* u, struct pdeParams params) {
         u[nwg-2] = u[2];
         u[nwg-1] = u[3];
         // newton iterations
-        newtonMethod(jac.data(), u, u0.data(), params);
+        newtonMethod(jac.data(), u0.data(), params);
         
         // now assign u to guess u0
         for(int i = 0; i < nwg; ++i) {
@@ -177,7 +177,7 @@ int jacobian(double* jac, const double* u, struct pdeParams params) {
     return 0;
 }
 
-int newtonMethod(double* jac, double* u, double* u0, struct pdeParams params) {
+int newtonMethod(double* jac, double* u0, struct pdeParams params) {
 
     // given a jacobian jac, state vector u, and initial guess u0,
     // iterate a pre-specified number of times to solve for u_n+1
@@ -192,6 +192,7 @@ int newtonMethod(double* jac, double* u, double* u0, struct pdeParams params) {
     int iter = 10;
 
     Vec a(nwg);
+    Vec u_prev(nwg);
 
     // main loop
     for(int k = 0; k < iter; ++k) {
@@ -200,6 +201,10 @@ int newtonMethod(double* jac, double* u, double* u0, struct pdeParams params) {
 
         // calculate jacobian based on guess u0
         jacobian(jac,u0,params);
+
+        for(int i = 0; i < nwg; ++i) {
+            u_prev[i] = u0[i];
+        }
 
         for(int i = 1; i < nwg-1; ++i) {
             a[i] = (u0[i]+dt*(u0[i]/(2*dx)*(u0[i+1]-u0[i-1])-v/(dx*dx)*(u0[i+1]-2*u0[i]+u0[i-1]))-u0[i]);
@@ -210,7 +215,7 @@ int newtonMethod(double* jac, double* u, double* u0, struct pdeParams params) {
 
         // now have -u0 = -Ja(u) = u_n+1 - u_n
         for(int i = 1; i < nwg-1; ++i) {
-            u0[i] = -u0[i] + u[i];
+            u0[i] = -u0[i] + u_prev[i];
         }
     }
 

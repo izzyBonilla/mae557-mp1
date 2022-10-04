@@ -23,7 +23,7 @@ int implicit(double* u, struct pdeParams params);
 
 int jacobian(double* jac, const double* u, struct pdeParams params);
 
-int newtonMethod(double* jac, double* u, double* u0, struct pdeParams params);
+int newtonMethod(double* jac, double* u0, struct pdeParams params);
 
 int solveCyclic(double* tc, double* u0, double* a, struct pdeParams params);
 
